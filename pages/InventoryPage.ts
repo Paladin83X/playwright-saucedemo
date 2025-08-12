@@ -1,27 +1,54 @@
 import { Page, expect } from '@playwright/test';
 
 export class InventoryPage {
-  constructor(private page: Page) {}
+  constructor(private readonly page: Page) {}
+
+  // --- Centralized selectors for consistency ---
+  private readonly sel = {
+    inventoryList: '[data-test="inventory-list"]',
+    inventoryItem: '[data-test="inventory-item"]',
+    inventoryItemName: '[data-test="inventory-item-name"]',
+    inventoryItemPrice: '[data-test="inventory-item-price"]',
+    inventoryItemImg: '[data-test="inventory-item-image"] img',
+    shoppingCartLink: '[data-test="shopping-cart-link"]',
+    productSortContainer: '[data-test="product-sort-container"]',
+    addToCartButton: 'button[data-test^="add-to-cart"]',
+    removeButton: 'button[data-test^="remove"]',
+    addToCartBtn: (name: string) =>
+      `[data-test="add-to-cart-${name.toLowerCase().replace(/\s+/g, '-')}"]`,
+    removeFromCartBtn: (name: string) =>
+      `[data-test="remove-${name.toLowerCase().replace(/\s+/g, '-')}"]`
+  };
+
+  /**
+   * Expose selectors for test files if needed
+   */
+  public getSelectors() {
+    return this.sel;
+  }
 
   async expectLoaded() {
-    await expect(this.page.locator('.inventory_list')).toBeVisible();
+    await expect(this.page.locator(this.sel.inventoryList)).toBeVisible();
   }
 
   async addToCartByName(productName: string) {
-    const productCard = this.page.locator('.inventory_item').filter({ hasText: productName });
-    await productCard.getByRole('button', { name: /add to cart/i }).click();
+    await this.page.locator(this.sel.addToCartBtn(productName)).click();
   }
 
   async removeFromCartByName(productName: string) {
-    const productCard = this.page.locator('.inventory_item').filter({ hasText: productName });
-    await productCard.getByRole('button', { name: /remove/i }).click();
+    await this.page.locator(this.sel.removeFromCartBtn(productName)).click();
   }
 
   async openCart() {
-    await this.page.locator('.shopping_cart_link').click();
+    await this.page.locator(this.sel.shoppingCartLink).click();
   }
 
-  async sortBy(optionLabel: 'Name (A to Z)' | 'Name (Z to A)' | 'Price (low to high)' | 'Price (high to low)') {
-    await this.page.locator('[data-test="product_sort_container"]').selectOption({ label: optionLabel });
+  async sortBy(optionValue: 'az' | 'za' | 'lohi' | 'hilo') {
+    const sortDropdown = this.page.locator(this.sel.productSortContainer);
+
+    // Wait dynamically until dropdown is visible
+    await sortDropdown.waitFor({ state: 'visible' });
+
+    await sortDropdown.selectOption(optionValue);
   }
 }

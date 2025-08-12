@@ -15,4 +15,9 @@ export class CartPage {
     const item = this.page.locator('.cart_item').filter({ hasText: productName });
     await item.getByRole('button', { name: /remove/i }).click();
   }
+  
+  async continueShopping() {
+  const btn = this.page.locator('[data-test="continue-shopping"]');
+  await btn.click();
+}
 }

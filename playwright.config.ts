@@ -7,7 +7,8 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
 
   // Anzahl Worker = Anzahl User im Pool
-  workers: process.env.CI ? 1 : 6,
+  workers: 1,
+  // workers: process.env.CI ? 1 : 6,
 
   reporter: [
     ['list'],
@@ -28,7 +29,6 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    // Falls du mehr Browser parallel testen willst:
     // {
     //   name: 'firefox',
     //   use: { ...devices['Desktop Firefox'] },

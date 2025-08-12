@@ -4,13 +4,14 @@ import type { User } from '../fixtures/user-pool';
 export class LoginPage {
   constructor(private page: Page) {}
 
-  // Zentrale Selektoren (robust über data-test)
+  // Zentrale Selektoren 
   private readonly sel = {
-    username: '[data-test="user-name"]',
+    username: '[data-test="username"]',
     password: '[data-test="password"]',
     loginBtn: '[data-test="login-button"][type="submit"]',
     error:   '[data-test="error"]',
-    inventoryList: '.inventory_list',
+   // inventoryList: '.inventory_list',
+    inventoryList: '[data-test="inventory-list"]',
   };
 
   /**
@@ -60,4 +61,12 @@ export class LoginPage {
     await this.login(user);
     await this.expectLoggedIn();
   }
+
+  async getErrorMessage(): Promise<string> {
+  const error = this.page.locator('[data-test="error"]');
+  if (await error.isVisible()) {
+    return (await error.textContent())?.trim() ?? '';
+  }
+  return '';
+}
 }

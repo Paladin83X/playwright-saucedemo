@@ -12,19 +12,25 @@ const USER_POOL: User[] = [
     { username: 'visual_user', password: 'secret_sauce' },
 ];
 
-// WICHTIG: Worker-Scoped Fixtures gehören direkt in den extend-Aufruf.
-export const test = base.extend<{
-    // Keine Test-Fixtures hier
-}, { 
-    // Worker-Fixtures
+
+ export const test = base.extend<{
+    
+}, {   
     workerUser: User 
 }>({
-    // Implementierung der Worker-Fixture
+    
     workerUser: [async ({}, use, workerInfo) => {
-        // Falls mehr Worker als User: per Modulo verteilen
-        const user = USER_POOL[workerInfo.workerIndex % USER_POOL.length];
+     // Fail fast, wenn mehr Worker als User im Pool gestartet wurden
+      if (workerInfo.workerIndex >= USER_POOL.length) {
+        throw new Error(
+          `Too many workers started: workerIndex=${workerInfo.workerIndex} but user pool has only ${USER_POOL.length} users. ` +
+          `Reduce the number of workers to ${USER_POOL.length} or fewer, or extend the user pool.`
+        );
+      }
+        
+        const user = USER_POOL[workerInfo.workerIndex];
         await use(user);
     }, { scope: 'worker' }],
-});
+}); 
 
 export const expect = baseExpect;
