@@ -1,23 +1,36 @@
 import { Page, expect } from '@playwright/test';
 
 export class CartPage {
-  constructor(private page: Page) {}
+  constructor(private readonly page: Page) {}
+
+  // --- Selectors ---
+  private readonly sel = {
+    cartList: '[data-test="cart-list"]',
+    cartItem: '[data-test="inventory-item"]',
+    cartItemName: '[data-test="inventory-item-name"]',
+    checkoutBtn: '[data-test="checkout"]',
+    continueShoppingBtn: '[data-test="continue-shopping"]',
+    removeBtn: (name: string) =>
+      `[data-test="remove-${name.toLowerCase().replace(/\s+/g, '-')}"]`,
+  };
 
   async expectLoaded() {
-    await expect(this.page.locator('.cart_list')).toBeVisible();
+    await expect(this.page.locator(this.sel.cartList)).toBeVisible();
   }
 
   async checkout() {
-    await this.page.getByRole('button', { name: 'Checkout' }).click();
+    await this.page.locator(this.sel.checkoutBtn).click();
   }
 
   async removeItem(productName: string) {
-    const item = this.page.locator('.cart_item').filter({ hasText: productName });
-    await item.getByRole('button', { name: /remove/i }).click();
+    await this.page.locator(this.sel.removeBtn(productName)).click();
   }
-  
+
   async continueShopping() {
-  const btn = this.page.locator('[data-test="continue-shopping"]');
-  await btn.click();
-}
+    await this.page.locator(this.sel.continueShoppingBtn).click();
+  }
+
+  getSelectors() {
+    return this.sel;
+  }
 }

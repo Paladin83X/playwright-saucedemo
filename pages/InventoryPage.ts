@@ -20,9 +20,6 @@ export class InventoryPage {
       `[data-test="remove-${name.toLowerCase().replace(/\s+/g, '-')}"]`
   };
 
-  /**
-   * Expose selectors for test files if needed
-   */
   public getSelectors() {
     return this.sel;
   }
@@ -45,7 +42,6 @@ export class InventoryPage {
 
   async sortBy(optionValue: 'az' | 'za' | 'lohi' | 'hilo') {
     const sortDropdown = this.page.locator(this.sel.productSortContainer);
-
     // Wait dynamically until dropdown is visible
     await sortDropdown.waitFor({ state: 'visible' });
 

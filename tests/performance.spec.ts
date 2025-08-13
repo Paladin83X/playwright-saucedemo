@@ -1,21 +1,3 @@
-
-/**
- * NOTE: This test intentionally does NOT use the user-pool fixture.
- *
- * Rationale:
- * 1) Controlled subject: We specifically benchmark the performance_glitch_user because this
- *    account is designed to expose latency issues. Running with a pool would mix different
- *    user profiles and dilute the signal we want to measure.
- * 2) Deterministic runs: A single-user, single-worker run reduces variability (CPU contention,
- *    parallel navigation, shared network bandwidth) and yields more repeatable timings.
- * 3) No accidental reuse: User-pool assigns users by worker index. If workers > pool size or
- *    multiple projects run, users can repeat, which skews measurements and complicates analysis.
- * 4) Clear baselines: Performance baselines should be established per user in isolation. If we
- *    want cross-user comparisons, we run this test separately per user and compare reports after.
- * 5) Simpler reporting: The HTML attachment and console timings directly reflect this single
- *    user’s journey without aggregating or merging measurements across workers.
- */
-
 import { test, expect } from '@playwright/test';
 import { LoginPage } from '../pages/LoginPage';
 import { InventoryPage } from '../pages/InventoryPage';
@@ -52,6 +34,17 @@ test('E2E Performance – performance_glitch_user', async ({ page }, testInfo) =
     await inventory.sortBy('lohi');
   });
 
+  // --- Zwei Artikel hinzufügen ---
+  await measure('Add Two Items to Cart', async () => {
+    await inventory.addToCartByName('Sauce Labs Backpack');
+    await inventory.addToCartByName('Sauce Labs Bike Light');
+  });
+
+  // --- Einen Artikel entfernen ---
+  await measure('Remove One Item from Cart', async () => {
+    await inventory.removeFromCartByName('Sauce Labs Backpack');
+  });
+
   // --- In den Warenkorb (Icon) ---
   await measure('Open Cart', async () => {
     await inventory.openCart();
@@ -73,12 +66,7 @@ test('E2E Performance – performance_glitch_user', async ({ page }, testInfo) =
   // --- Checkout starten ---
   await measure('Checkout Begin', async () => {
     await cart.checkout();
-  });
-
-  // --- Customer Info + Continue ---
-  await measure('Fill Info + Continue', async () => {
-    await checkout.fillCustomerInfo('John', 'Doe', '10115');
-    await checkout.continue();
+    await checkout.expectLoaded();
   });
 
   // --- Cancel zurück ---
@@ -87,10 +75,40 @@ test('E2E Performance – performance_glitch_user', async ({ page }, testInfo) =
     await cart.expectLoaded();
   });
 
-  // --- Erneut Checkout → Continue ---
-  await measure('Checkout Again + Continue', async () => {
+  // --- Checkout again ---
+  await measure('Checkout Begin Again', async () => {
     await cart.checkout();
-    await checkout.continue();
+    await checkout.expectLoaded();
+  });
+
+  // --- Customer Info + Continue ---
+  await measure('Fill Info + Continue', async () => {
+    await checkout.fillCustomerInfo('John', 'Doe', '10115');
+    await checkout.expectLoadedOverview();
+  });
+
+  // --- Cancel Checkout:Overview ---
+  await measure('Cancel Checkout Overview', async () => {
+    await checkout.cancel();
+    await inventory.expectLoaded();
+  });
+
+  // --- Erneut Warenkorb öffnen ---
+  await measure('Open Cart Again After Cancel', async () => {
+    await inventory.openCart();
+    await cart.expectLoaded();
+  });
+
+  // --- Checkout again ---
+  await measure('Checkout Begin Final', async () => {
+    await cart.checkout();
+    await checkout.expectLoaded();
+  });
+
+  // --- Customer Info + Continue ---
+  await measure('Fill Info + Continue Final', async () => {
+    await checkout.fillCustomerInfo('John', 'Doe', '10115');
+    await checkout.expectLoadedOverview();
   });
 
   // --- Finish ---
@@ -106,13 +124,7 @@ test('E2E Performance – performance_glitch_user', async ({ page }, testInfo) =
   });
 
   // Quick output to console for a fast overview
-  // eslint-disable-next-line no-console
   console.table(steps);
-
-  // Optional soft assertions for max duration of each step
-  /* for (const s of steps) {
-    expect.soft(s.duration, `${s.action} took too long`).toBeLessThan(7000);
-  } */
 
   // Generate HTML performance report & attach to Playwright report
   const testEndedAt = new Date();
