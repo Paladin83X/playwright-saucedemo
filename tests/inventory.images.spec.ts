@@ -1,15 +1,26 @@
-// tests/inventory.imageMapping.spec.ts
+/**
+ * NOTE: This test validates the image mapping and integrity on the inventory page.
+ * It's designed to be run against specific user accounts like 'visual_user' and 'problem_user',
+ * which are known to have issues with visual elements.
+ *
+ * The test performs the following checks for each product item:
+ * 1.  It verifies the presence of an image element.
+ * 2.  It checks that the 'data-test' attribute and the 'src' attribute are not empty.
+ * 3.  It compares the actual 'src' value with an expected value from a predefined mapping to ensure the correct image is displayed for each product.
+ * 4.  It performs additional soft checks for image visibility and load status (naturalWidth > 0) to catch rendering issues without failing prematurely.
+ *
+ * The final assertion will fail the test if any issues (such as missing images, incorrect src, or broken links) are found, providing a detailed summary in the report.
+ */
+
 import { test, expect } from '@playwright/test';
 import { LoginPage } from '../pages/LoginPage';
 import { InventoryPage } from '../pages/InventoryPage';
 
-// Passe hier die gewünschten Nutzer an
+// Adjust users here as needed
 const USERS = [
-  //'standard_user',
+  'standard_user',
   'visual_user',
   'problem_user',
-  // 'performance_glitch_user',
-  // 'error_user',
 ];
 
 test.describe('Inventory image mapping – data-test ↔ src (soft aggregation)', () => {
@@ -24,8 +35,8 @@ test.describe('Inventory image mapping – data-test ↔ src (soft aggregation)'
       const inventory = new InventoryPage(page);
       await inventory.expectLoaded();
 
-      // Erwartete Zuordnung: img[data-test] → erwarteter src (mit Hash)
-      // Wir prüfen, dass der tatsächliche src den erwarteten Teil enthält (endsWith oder includes).
+      // Expected mapping: img[data-test] → expected src (with hash)
+      // We check that the actual src contains the expected part (endsWith or includes).
       const expectedSrcByDataTest: Record<string, string> = {
         'inventory-item-sauce-labs-backpack-img':
           '/static/media/sauce-backpack-1200x1500.0a0b85a3.jpg',
@@ -43,22 +54,22 @@ test.describe('Inventory image mapping – data-test ↔ src (soft aggregation)'
 
       const issues: { product: string; field: string; expected: string; received: string }[] = [];
 
-      // Alle Karten einsammeln
+      // Collect all cards
       const cards = page.locator('[data-test="inventory-item"]');
       const count = await cards.count();
 
       for (let i = 0; i < count; i++) {
         const card = cards.nth(i);
 
-        // Produktname (nur fürs Reporting)
+        // Product name (for reporting only)
         const name =
           (await card.locator('[data-test="inventory-item-name"]').textContent())?.trim() ??
           `#${i + 1}`;
 
-        // Bild-Locator (generisch, stabil)
+        // Image locator (generic, stable)
         const img = card.locator('div.inventory_item_img img');
 
-        // Existiert ein Bild?
+        // Check if an image exists
         const imgCount = await img.count();
         if (imgCount === 0) {
           issues.push({
@@ -70,7 +81,7 @@ test.describe('Inventory image mapping – data-test ↔ src (soft aggregation)'
           continue;
         }
 
-        // data-test & src auslesen
+        // Read data-test & src attributes
         const dataTest = (await img.first().getAttribute('data-test')) ?? '';
         const src = (await img.first().getAttribute('src')) ?? '';
 
@@ -93,7 +104,7 @@ test.describe('Inventory image mapping – data-test ↔ src (soft aggregation)'
           continue;
         }
 
-        // Erwarteten src aus Mapping holen
+        // Get expected src from mapping
         const expectedSrc = expectedSrcByDataTest[dataTest];
         if (!expectedSrc) {
           issues.push({
@@ -105,7 +116,7 @@ test.describe('Inventory image mapping – data-test ↔ src (soft aggregation)'
           continue;
         }
 
-        // Vergleich: tatsächlicher src soll den erwarteten Teil enthalten (oder damit enden)
+        // Comparison: actual src should contain the expected part (or end with it)
         const matches =
           src.endsWith(expectedSrc) || src.includes(expectedSrc);
 
@@ -118,7 +129,7 @@ test.describe('Inventory image mapping – data-test ↔ src (soft aggregation)'
           });
         }
 
-        // Optional: Sichtbarkeit & Ladezustand prüfen (hilft beim Debugging, ohne früh zu failen)
+        // Optional: Check visibility & load status (helps with debugging without early failure)
         const isVisible = await img.first().isVisible();
         if (!isVisible) {
           issues.push({
@@ -158,13 +169,13 @@ test.describe('Inventory image mapping – data-test ↔ src (soft aggregation)'
         }
       }
 
-      // Übersicht in der Konsole
+      // Console summary
       if (issues.length) {
         // eslint-disable-next-line no-console
         console.table(issues);
       }
 
-      // Eine harte Assertion am Ende mit kompletter Zusammenfassung
+      // A hard assertion at the end with a full summary
       expect(
         issues,
         issues.map(i => `[${i.product}] ${i.field}: expected ${i.expected}, got ${i.received}`).join('\n')

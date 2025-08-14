@@ -1,114 +1,136 @@
+/**
+ * ### E2E – Soft-Aggregated Canary for `error_user`
+ *
+ * Purpose & Non-Redundancy:
+ * - This test intentionally overlaps with unit-like checks covered in other specs (login, sorting, cart badge, checkout),
+ *   but it is **not redundant** because it validates the **entire cross-page flow** for the
+ *   specifically unstable `error_user` account and **aggregates all deviations** into a single report.
+ * - Specialized specs focus on isolated behaviors (e.g., precise badge updates after each click).
+ *   This E2E canary focuses on **milestones only** (added 2 → badge 2, removed 1 → badge 1, cart contents, thank-you),
+ *   plus **transitions** (URL changes).
+ * - Run policy: Tag as `@e2e @soft @error_user` and execute on **nightly / pre-release** pipelines rather than on every commit,
+ *   to catch **integration or environment regressions** that isolated tests may miss.
+ */
+
 import { test, expect } from '@playwright/test';
 import { LoginPage } from '../pages/LoginPage';
 import { InventoryPage } from '../pages/InventoryPage';
 import { CartPage } from '../pages/CartPage';
 import { CheckoutPage } from '../pages/CheckoutPage';
 
+test.describe('@e2e @soft @error_user E2E canary', () => {
+  test('Completes checkout flow and aggregates issues (milestone checks only)', async ({ page }) => {
+    // --- Soft issue bucket (aggregated at the end) ---
+    const issues: string[] = [];
 
-test.describe('E2E Test with Soft Assertions for error_user', () => {
-  test('Completes checkout flow and aggregates issues', async ({ page }) => {
-    // Pages
+    // --- POs ---
     const loginPage = new LoginPage(page);
     const inventoryPage = new InventoryPage(page);
     const cartPage = new CartPage(page);
     const checkoutPage = new CheckoutPage(page);
 
-    // Collect all soft issues here
-    const issues: string[] = [];
-
-    // 1) Login
-    await loginPage.goto();
-    await loginPage.login({ username: 'error_user', password: 'secret_sauce' });
-
-    try {
-      await loginPage.expectLoggedIn();
-      await inventoryPage.expectLoaded();
-    } catch (e: any) {
-      issues.push(`Login or inventory load failed: ${e?.message ?? e}`);
-    }
-
-    // 2) Sort (low → high) and verify prices are sorted ascending
-    try {
-      await inventoryPage.sortBy('lohi');
-      const sel = inventoryPage.getSelectors();
-      const rawPrices = await page.locator(sel.inventoryItemPrice).allTextContents();
-      const toNum = (s: string) => Number((s.match(/[\d.]+/) ?? ['0'])[0]);
-      const nums = rawPrices.map(toNum);
-      const sorted = [...nums].sort((a, b) => a - b);
-      if (JSON.stringify(nums) !== JSON.stringify(sorted)) {
-        issues.push(`Price sorting failed. Expected ascending: ${sorted.join(', ')} | Got: ${nums.join(', ')}`);
-      }
-    } catch (e: any) {
-      issues.push(`Sorting check failed: ${e?.message ?? e}`);
-    }
-
-    // 3) Add & remove items, verify cart badge count
-    const firstItemName = 'Sauce Labs Backpack';
-    const secondItemName = 'Sauce Labs Bike Light';
-    try {
-      await inventoryPage.addToCartByName(firstItemName);
-      await inventoryPage.addToCartByName(secondItemName);
-
-      // Badge is not a data-test on SauceDemo; use class for count
+    // Helper: cart badge (SauceDemo uses class instead of data-test)
+    const getBadgeCount = async () => {
       const badge = page.locator('.shopping_cart_badge');
-      const badgeText = (await badge.isVisible()) ? (await badge.textContent())?.trim() : null;
-      if (badgeText !== '2') {
-        issues.push(`Cart badge after adding 2 items expected "2" but got "${badgeText ?? '(none)'}".`);
-      }
+      if (!(await badge.count()) || !(await badge.isVisible())) return 0;
+      const txt = (await badge.textContent())?.trim() ?? '0';
+      const n = Number(txt);
+      return Number.isFinite(n) ? n : 0;
+    };
 
-      await inventoryPage.removeFromCartByName(firstItemName);
-      const badgeTextAfterRemove = (await badge.isVisible()) ? (await badge.textContent())?.trim() : null;
-      if (badgeTextAfterRemove !== '1') {
-        issues.push(`Cart badge after removing 1 item expected "1" but got "${badgeTextAfterRemove ?? '(none)'}".`);
-      }
-    } catch (e: any) {
-      issues.push(`Add/Remove or badge check failed: ${e?.message ?? e}`);
-    }
-
-    // 4) Go to cart and verify contents
-    try {
-      await inventoryPage.openCart();
-      await cartPage.expectLoaded();
-
-      // Expect only the second item remains
-      const remainingName = (await page.locator('[data-test="inventory-item-name"]').first().textContent())?.trim();
-      if (remainingName !== secondItemName) {
-        issues.push(`Cart item mismatch. Expected "${secondItemName}" but saw "${remainingName ?? '(none)'}".`);
-      }
-    } catch (e: any) {
-      issues.push(`Cart checks failed: ${e?.message ?? e}`);
-    }
-
-    // 5) Checkout: fill info and try to finish
-    try {
-      await cartPage.checkout();
-      await checkoutPage.fillCustomerInfo('Dennis', 'Tester', '12345');
-
-      // error_user can misbehave here; try to continue & finish but do not hard-fail
-      try {
-        await checkoutPage.continue();
-      } catch (e: any) {
-        issues.push(`Continue failed on checkout step: ${e?.message ?? e}`);
-      }
+    // --- 1) Login + landing on Inventory ---
+    await test.step('Login and expect inventory is visible', async () => {
+      await loginPage.goto();
+      await loginPage.login({ username: 'error_user', password: 'secret_sauce' });
 
       try {
-        await checkoutPage.finish();
+        await loginPage.expectLoggedIn();
+        await inventoryPage.expectLoaded();
+        await expect(page).toHaveURL(/inventory\.html/);
       } catch (e: any) {
-        issues.push(`Finish failed (known for error_user): ${e?.message ?? e}`);
+        issues.push(`Login or inventory load failed: ${e?.message ?? e}`);
       }
+    });
 
-      // Thank you page (may fail for error_user)
+    // --- 2) Sort (lo->hi) – milestone only ---
+    await test.step('Apply sorting (low→high) – milestone only', async () => {
       try {
-        await checkoutPage.expectThankYouMessage();
+        await inventoryPage.sortBy('lohi');
       } catch (e: any) {
-        issues.push(`Thank you message missing after finish: ${e?.message ?? e}`);
+        issues.push(`Sorting interaction failed: ${e?.message ?? e}`);
       }
-    } catch (e: any) {
-      issues.push(`Checkout flow failed: ${e?.message ?? e}`);
-    }
+    });
 
-    // Final aggregated assertion
+    // --- 3) Add 2 items → badge == 2 ; remove 1 → badge == 1 ---
+    await test.step('Add & remove items – badge milestone checks', async () => {
+      const firstItem = 'Sauce Labs Backpack';
+      const secondItem = 'Sauce Labs Bike Light';
+
+      try {
+        await inventoryPage.addToCartByName(firstItem);
+        await inventoryPage.addToCartByName(secondItem);
+
+        const badgeAfterTwo = await getBadgeCount();
+        if (badgeAfterTwo !== 2) {
+          issues.push(`Badge mismatch after adding 2 items: expected 2, received ${badgeAfterTwo}`);
+        }
+
+        await inventoryPage.removeFromCartByName(firstItem);
+        const badgeAfterRemove = await getBadgeCount();
+        if (badgeAfterRemove !== 1) {
+          issues.push(`Badge mismatch after removing 1 item: expected 1, received ${badgeAfterRemove}`);
+        }
+      } catch (e: any) {
+        issues.push(`Add/Remove or badge checks failed: ${e?.message ?? e}`);
+      }
+    });
+
+    // --- 4) Open cart → expect remaining item present ---
+    await test.step('Open cart and verify remaining contents', async () => {
+      try {
+        await inventoryPage.openCart();
+        await expect(page).toHaveURL(/cart\.html/);
+        await cartPage.expectLoaded();
+
+        const name = (await page.locator('[data-test="inventory-item-name"]').first().textContent())?.trim();
+        if (name !== 'Sauce Labs Bike Light') {
+          issues.push(`Cart contents mismatch: expected "Sauce Labs Bike Light", received "${name ?? '(none)'}"`);
+        }
+      } catch (e: any) {
+        issues.push(`Cart verification failed: ${e?.message ?? e}`);
+      }
+    });
+
+    // --- 5) Checkout flow (information → overview → finish) ---
+    await test.step('Checkout flow – milestone transitions and thank-you', async () => {
+      try {
+        await cartPage.checkout();
+        await expect(page).toHaveURL(/checkout-step-one\.html/);
+
+        await checkoutPage.fillCustomerInfo('Dennis', 'Tester', '12345');
+
+        try {
+          await checkoutPage.continue();
+          await expect(page).toHaveURL(/checkout-step-two\.html/);
+          await checkoutPage.expectLoadedOverview();
+        } catch (e: any) {
+          issues.push(`Continue to overview failed: ${e?.message ?? e}`);
+        }
+
+        try {
+          await checkoutPage.finish();
+          await expect(page).toHaveURL(/checkout-complete\.html/);
+          await checkoutPage.expectThankYouMessage();
+        } catch (e: any) {
+          issues.push(`Finish/Thank-you failed (expected for error_user): ${e?.message ?? e}`);
+        }
+      } catch (e: any) {
+        issues.push(`Checkout flow failed: ${e?.message ?? e}`);
+      }
+    });
+
+    // --- Final aggregated assertion ---
     const summary = issues.join('\n');
-    expect(issues, `Test failed with the following issues:\n${summary}`).toHaveLength(0);
+    expect(issues, `E2E canary reported issues:\n${summary}`).toHaveLength(0);
   });
 });

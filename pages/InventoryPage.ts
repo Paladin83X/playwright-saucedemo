@@ -1,7 +1,19 @@
+/**
+ * ### InventoryPage
+ *
+ * This Page Object represents the product inventory page of the application.
+ * It provides methods to interact with and verify the inventory list,
+ * add or remove products from the cart, open the shopping cart, and change
+ * the product sorting order.
+ * 
+ */
 import { Page, expect } from '@playwright/test';
+import { BasePage } from './base-page';
 
-export class InventoryPage {
-  constructor(private readonly page: Page) {}
+export class InventoryPage extends BasePage {
+  constructor(page: Page) {
+    super(page);
+  }
 
   // --- Centralized selectors for consistency ---
   private readonly sel = {
@@ -29,22 +41,20 @@ export class InventoryPage {
   }
 
   async addToCartByName(productName: string) {
-    await this.page.locator(this.sel.addToCartBtn(productName)).click();
+    await this.click(this.sel.addToCartBtn(productName));
   }
 
   async removeFromCartByName(productName: string) {
-    await this.page.locator(this.sel.removeFromCartBtn(productName)).click();
+    await this.click(this.sel.removeFromCartBtn(productName));
   }
 
   async openCart() {
-    await this.page.locator(this.sel.shoppingCartLink).click();
+    await this.click(this.sel.shoppingCartLink);
   }
 
   async sortBy(optionValue: 'az' | 'za' | 'lohi' | 'hilo') {
     const sortDropdown = this.page.locator(this.sel.productSortContainer);
-    // Wait dynamically until dropdown is visible
-    await sortDropdown.waitFor({ state: 'visible' });
-
+    await expect(sortDropdown).toBeVisible();
     await sortDropdown.selectOption(optionValue);
   }
 }

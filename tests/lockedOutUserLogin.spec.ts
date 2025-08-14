@@ -1,12 +1,15 @@
-// This test explicitly targets only the `locked_out_user` account.
-// The User Pool is not used here because parallel execution with other users is unnecessary.
-// We want deterministic, isolated verification of the lockout behavior for this specific account.
+/**
+ * NOTE: This test is designed to verify the login behavior for a specific, locked-out user account.
+ * It ensures that when a user with the username 'locked_out_user' attempts to log in with the correct password,
+ * the application correctly rejects the login attempt and displays the appropriate error message,
+ * confirming that the account is properly locked.
+ */
 
 import { test, expect } from '@playwright/test';
 import { LoginPage } from '../pages/LoginPage';
 
-test.describe('Login-Test für locked_out_user', () => {
-  test('locked_out_user kann sich nicht einloggen', async ({ page }) => {
+test.describe('Login test for locked_out_user', () => {
+  test('locked_out_user cannot log in', async ({ page }) => {
     const loginPage = new LoginPage(page);
 
     // Navigate to the login page

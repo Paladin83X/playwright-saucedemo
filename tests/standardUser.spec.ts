@@ -1,3 +1,14 @@
+/**
+ * NOTE: This is a comprehensive end-to-end test for the 'standard_user' following a full "happy path" workflow.
+ * It validates a complete user journey, starting from login and proceeding through several key stages:
+ * 1.  Adding multiple items to the shopping cart and verifying the cart's content and badge count.
+ * 2.  Modifying the cart by removing and adding items to ensure dynamic updates are handled correctly.
+ * 3.  Proceeding through the entire checkout process, including filling out customer information.
+ * 4.  Verifying the final order summary and the successful completion message.
+ * 5.  Ensuring the cart is correctly cleared after the order is finished.
+ * This test uses hard assertions to guarantee that each step of the user flow functions exactly as expected.
+ */
+
 import { test, expect } from '@playwright/test';
 import { LoginPage } from '../pages/LoginPage';
 import { InventoryPage } from '../pages/InventoryPage';

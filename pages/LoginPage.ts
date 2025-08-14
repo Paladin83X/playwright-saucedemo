@@ -1,44 +1,49 @@
+/**
+ * ### LoginPage
+ *
+ * This Page Object encapsulates the functionality related to the login page of the application.
+ * It provides methods for user interaction and validation, such as navigating to the page,
+ * performing a login, and asserting the expected outcomes (successful login or an error message).
+ * The selectors for all key elements on the login page are defined centrally to make maintenance easier.
+ */
 import { Page, expect } from '@playwright/test';
+import { BasePage } from './base-page';
 import type { User } from '../fixtures/user-pool';
 
-export class LoginPage {
-  constructor(private page: Page) {}
+export class LoginPage extends BasePage {
+  constructor(page: Page) {
+    super(page);
+  }
 
-  // Zentrale Selektoren 
+  // Central selectors
   private readonly sel = {
     username: '[data-test="username"]',
     password: '[data-test="password"]',
     loginBtn: '[data-test="login-button"][type="submit"]',
-    error:   '[data-test="error"]',
-   // inventoryList: '.inventory_list',
+    error: '[data-test="error"]',
     inventoryList: '[data-test="inventory-list"]',
   };
 
   /**
-   * Öffnet die Login-Seite. page.goto wartet bereits ausreichend;
-   * kein zusätzliches waitForNavigation nötig.
+   * Navigates to the login page.
    */
   async goto() {
     await this.page.goto('/');
   }
 
   /**
-   * Füllt Credentials aus und klickt auf Login.
-   * Wartet vor dem Klick, bis der Button sichtbar ist (damit er wirklich klickbar ist).
-   * Diese Methode prüft NICHT den Erfolg – nutze dafür expectLoggedIn() oder expectError().
+   * Fills in credentials and clicks the login button.
+   * Does not assert success here—use expectLoggedIn() or expectError().
    */
   async login(user: User) {
-    await this.page.locator(this.sel.username).fill(user.username);
-    await this.page.locator(this.sel.password).fill(user.password);
-
-    const loginButton = this.page.locator(this.sel.loginBtn);
-    await expect(loginButton).toBeVisible(); 
-    await loginButton.click();
+    await this.fill(this.sel.username, user.username);
+    await this.fill(this.sel.password, user.password);
+    await this.click(this.sel.loginBtn);
   }
 
   /**
-   * Erwartet einen erfolgreichen Login: Inventarseite mit Liste sichtbar
-   * und URL enthält inventory.html.
+   * Asserts a successful login: the inventory page is visible
+   * and the URL contains inventory.html.
    */
   async expectLoggedIn() {
     await expect(this.page).toHaveURL(/inventory\.html/);
@@ -46,16 +51,15 @@ export class LoginPage {
   }
 
   /**
-   * Erwartet eine Fehlermeldung (z. B. für locked_out_user oder falsche Credentials).
-   * messagePart: Teilstring, der in der Fehlermeldung vorkommen soll.
+   * Asserts that an error message is displayed (e.g., for locked_out_user or wrong credentials).
+   * @param messagePart - A substring that is expected to be present in the error message.
    */
   async expectError(messagePart: string) {
     await expect(this.page.locator(this.sel.error)).toContainText(messagePart);
   }
 
   /**
-   * Optionaler Helper: kombiniert login() + Erfolgserwartung.
-   * Praktisch für Happy-Path-Tests.
+   * Optional helper that combines login() with a success assertion.
    */
   async loginAndExpectSuccess(user: User) {
     await this.login(user);
@@ -63,10 +67,10 @@ export class LoginPage {
   }
 
   async getErrorMessage(): Promise<string> {
-  const error = this.page.locator('[data-test="error"]');
-  if (await error.isVisible()) {
-    return (await error.textContent())?.trim() ?? '';
+    const error = this.page.locator(this.sel.error);
+    if (await error.isVisible()) {
+      return (await error.textContent())?.trim() ?? '';
+    }
+    return '';
   }
-  return '';
-}
 }

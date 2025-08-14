@@ -1,4 +1,14 @@
-// tests/visualUser.prices.spec.ts
+/**
+ * NOTE: This test is specifically designed to validate the prices displayed on the inventory page
+ * for the 'visual_user' account. It performs a soft aggregation of all product prices and
+ * compares them against a predefined, authoritative baseline.
+ *
+ * The test's main purpose is to identify any price mismatches, which are a known issue
+ * for the 'visual_user' who is intended to experience visual and data glitches.
+ * It iterates through all displayed products, checks their names and prices, and logs any discrepancies.
+ * The final, single assertion will fail the test only if one or more price mismatches were found,
+ * providing a clear, summarized report of the issues.
+ */
 import { test, expect } from '@playwright/test';
 import { LoginPage } from '../pages/LoginPage';
 import { InventoryPage } from '../pages/InventoryPage';

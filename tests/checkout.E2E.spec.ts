@@ -17,8 +17,8 @@ import { CartPage } from '../pages/CartPage';
 import { CheckoutPage } from '../pages/CheckoutPage';
 
 const USERS = [
-  //'standard_user',
-  //'problem_user',
+  'standard_user',
+  'problem_user',
    'error_user',
 ];
 

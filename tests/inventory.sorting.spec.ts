@@ -12,10 +12,9 @@ import { LoginPage } from '../pages/LoginPage';
 import { InventoryPage } from '../pages/InventoryPage';
 
 const USERS = [
-  //'standard_user',
-  //'visual_user',
+  'standard_user',
   'problem_user',
-  //'error_user'
+  'error_user'
 ];
 
 test.describe('Inventory – Sorting validation (clickable + changeable + alert detection)', () => {

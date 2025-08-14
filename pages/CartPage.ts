@@ -1,7 +1,19 @@
+/**
+ * ### CartPage
+ * This Page Object represents the shopping cart page of the application.
+ * It contains all the selectors and methods needed to interact with the cart,
+ * such as verifying its content, removing items, and proceeding to checkout.
+ *
+ * NOTE: This version extends BasePage to reuse unified interaction helpers.
+ * Public API stays the same to avoid breaking existing tests.
+ */
 import { Page, expect } from '@playwright/test';
+import { BasePage } from './base-page';
 
-export class CartPage {
-  constructor(private readonly page: Page) {}
+export class CartPage extends BasePage {
+  constructor(page: Page) {
+    super(page);
+  }
 
   // --- Selectors ---
   private readonly sel = {
@@ -19,15 +31,18 @@ export class CartPage {
   }
 
   async checkout() {
-    await this.page.locator(this.sel.checkoutBtn).click();
+    // guarded click from BasePage
+    await this.click(this.sel.checkoutBtn);
   }
 
   async removeItem(productName: string) {
-    await this.page.locator(this.sel.removeBtn(productName)).click();
+    // guarded click from BasePage
+    await this.click(this.sel.removeBtn(productName));
   }
 
   async continueShopping() {
-    await this.page.locator(this.sel.continueShoppingBtn).click();
+    // guarded click from BasePage
+    await this.click(this.sel.continueShoppingBtn);
   }
 
   getSelectors() {

@@ -1,3 +1,13 @@
+/**
+ * NOTE: This test is an end-to-end performance validation for the 'performance_glitch_user'.
+ * It measures the time taken for key user actions throughout the entire checkout workflow,
+ * from login to order completion and returning to the home page.
+ *
+ * The test's primary goal is to identify and report on performance glitches, which are a known
+ * characteristic of this specific user account. It logs the duration of each step and generates
+ * a comprehensive HTML performance report at the end to provide a clear overview of any
+ * observed delays.
+ */
 import { test, expect } from '@playwright/test';
 import { LoginPage } from '../pages/LoginPage';
 import { InventoryPage } from '../pages/InventoryPage';
@@ -29,47 +39,47 @@ test('E2E Performance – performance_glitch_user', async ({ page }, testInfo) =
     await inventory.expectLoaded();
   });
 
-  // --- Sortieren (Preis low→high) ---
+  // --- Sort by Price (low→high) ---
   await measure('Sort by Price (low→high)', async () => {
     await inventory.sortBy('lohi');
   });
 
-  // --- Zwei Artikel hinzufügen ---
+  // --- Add two items ---
   await measure('Add Two Items to Cart', async () => {
     await inventory.addToCartByName('Sauce Labs Backpack');
     await inventory.addToCartByName('Sauce Labs Bike Light');
   });
 
-  // --- Einen Artikel entfernen ---
+  // --- Remove one item ---
   await measure('Remove One Item from Cart', async () => {
     await inventory.removeFromCartByName('Sauce Labs Backpack');
   });
 
-  // --- In den Warenkorb (Icon) ---
+  // --- Open Cart (Icon) ---
   await measure('Open Cart', async () => {
     await inventory.openCart();
     await cart.expectLoaded();
   });
 
-  // --- Zurück zum Shoppen ---
+  // --- Continue Shopping ---
   await measure('Continue Shopping', async () => {
     await cart.continueShopping();
     await inventory.expectLoaded();
   });
 
-  // --- Erneut Warenkorb öffnen ---
+  // --- Open Cart again ---
   await measure('Open Cart Again', async () => {
     await inventory.openCart();
     await cart.expectLoaded();
   });
 
-  // --- Checkout starten ---
+  // --- Start Checkout ---
   await measure('Checkout Begin', async () => {
     await cart.checkout();
     await checkout.expectLoaded();
   });
 
-  // --- Cancel zurück ---
+  // --- Cancel back ---
   await measure('Cancel Checkout', async () => {
     await checkout.cancel();
     await cart.expectLoaded();
@@ -81,7 +91,7 @@ test('E2E Performance – performance_glitch_user', async ({ page }, testInfo) =
     await checkout.expectLoaded();
   });
 
-  // --- Customer Info + Continue ---
+  // --- Fill Info + Continue ---
   await measure('Fill Info + Continue', async () => {
     await checkout.fillCustomerInfo('John', 'Doe', '10115');
     await checkout.expectLoadedOverview();
@@ -93,7 +103,7 @@ test('E2E Performance – performance_glitch_user', async ({ page }, testInfo) =
     await inventory.expectLoaded();
   });
 
-  // --- Erneut Warenkorb öffnen ---
+  // --- Open Cart again ---
   await measure('Open Cart Again After Cancel', async () => {
     await inventory.openCart();
     await cart.expectLoaded();
@@ -105,7 +115,7 @@ test('E2E Performance – performance_glitch_user', async ({ page }, testInfo) =
     await checkout.expectLoaded();
   });
 
-  // --- Customer Info + Continue ---
+  // --- Fill Info + Continue ---
   await measure('Fill Info + Continue Final', async () => {
     await checkout.fillCustomerInfo('John', 'Doe', '10115');
     await checkout.expectLoadedOverview();

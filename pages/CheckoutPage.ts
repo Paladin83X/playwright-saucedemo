@@ -1,7 +1,19 @@
-import { Page, expect } from '@playwright/test';
+/**
+ * ### CheckoutPage
+ *
+ * This Page Object models the checkout process of the application.
+ * It covers both the customer information step and the order overview,
+ * providing methods to fill out required fields, navigate between steps,
+ * and verify the completion message.
+ */
 
-export class CheckoutPage {
-  constructor(private page: Page) {}
+import { Page, expect } from '@playwright/test';
+import { BasePage } from './base-page';
+
+export class CheckoutPage extends BasePage {
+  constructor(page: Page) {
+    super(page);
+  }
 
   private readonly sel = {
     firstName: '[data-test="firstName"]',
@@ -12,7 +24,7 @@ export class CheckoutPage {
     backHomeBtn: '[data-test="back-to-products"]',
     finishBtn: '[data-test="finish"]',
     thankYouHeader: '.complete-header',
-    title: '[data-test="title"]'
+    title: '[data-test="title"]',
   };
 
   async expectLoaded() {
@@ -21,58 +33,33 @@ export class CheckoutPage {
     await expect(titleLocator).toHaveText('Checkout: Your Information');
   }
 
-   async expectLoadedOverview() {
+  async expectLoadedOverview() {
     const titleLocator = this.page.locator(this.sel.title);
     await expect(titleLocator).toBeVisible();
     await expect(titleLocator).toHaveText('Checkout: Overview');
   }
 
   async continue() {
-    const btn = this.page.locator(this.sel.continueBtn);
-    await btn.waitFor({ state: 'visible' });
-    await expect(btn).toBeEnabled();
-    await btn.click();
+    await this.click(this.sel.continueBtn);
   }
 
   async cancel() {
-    const btn = this.page.locator(this.sel.cancelBtn);
-    await btn.waitFor({ state: 'visible' });
-    await expect(btn).toBeEnabled();
-    await btn.click();
+    await this.click(this.sel.cancelBtn);
   }
 
   async backHome() {
-    const btn = this.page.locator(this.sel.backHomeBtn);
-    await btn.waitFor({ state: 'visible' });
-    await expect(btn).toBeEnabled();
-    await btn.click();
+    await this.click(this.sel.backHomeBtn);
   }
 
   async fillCustomerInfo(firstName: string, lastName: string, postalCode: string) {
-    const firstNameInput = this.page.locator(this.sel.firstName);
-    const lastNameInput = this.page.locator(this.sel.lastName);
-    const postalCodeInput = this.page.locator(this.sel.postalCode);
-    const continueButton = this.page.locator(this.sel.continueBtn);
-
-    await firstNameInput.waitFor({ state: 'visible' });
-    await firstNameInput.fill(firstName);
-
-    await lastNameInput.waitFor({ state: 'visible' });
-    await lastNameInput.fill(lastName);
-
-    await postalCodeInput.waitFor({ state: 'visible' });
-    await postalCodeInput.fill(postalCode);
-
-    await continueButton.waitFor({ state: 'visible' });
-    await expect(continueButton).toBeEnabled();
-    await continueButton.click();
+    await this.fill(this.sel.firstName, firstName);
+    await this.fill(this.sel.lastName, lastName);
+    await this.fill(this.sel.postalCode, postalCode);
+    await this.click(this.sel.continueBtn);
   }
 
   async finish() {
-    const finishButton = this.page.locator(this.sel.finishBtn);
-    await finishButton.waitFor({ state: 'visible' });
-    await expect(finishButton).toBeEnabled();
-    await finishButton.click();
+    await this.click(this.sel.finishBtn);
   }
 
   async expectThankYouMessage() {

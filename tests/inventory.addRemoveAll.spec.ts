@@ -1,18 +1,28 @@
-// tests/inventory.addRemoveAll.spec.ts
+/**
+ * ### Inventory – Add & Remove All Items with Cart Badge Validation
+ *
+ * This test verifies that adding and removing all items from the inventory page
+ * correctly updates the cart badge count after each click.
+ *
+ * For every click (add or remove), the test logs a reduced report:
+ *   cart badge | expected | received
+ *
+ * At the end of the test, all collected issues are asserted to ensure there
+ * are no mismatches between the expected and actual badge values.
+ */
 import { test, expect } from '@playwright/test';
 import { LoginPage } from '../pages/LoginPage';
 import { InventoryPage } from '../pages/InventoryPage';
 
-// Users anpassen (locked_out_user auslassen, da Login fehlschlägt)
+// Define which users will run the test (locked_out_user is excluded)
 const USERS = [
-  //'standard_user',
-  //'visual_user',
+  'standard_user',
   'problem_user',
-  //'error_user',
+  'error_user',
 ];
 
 async function getBadgeCount(page): Promise<number> {
-  const badge = page.locator('.shopping_cart_badge'); // SauceDemo hat hier kein data-test
+  const badge = page.locator('.shopping_cart_badge'); // SauceDemo has no data-test here
   if (!(await badge.count())) return 0;
   if (!(await badge.isVisible())) return 0;
   const txt = (await badge.textContent())?.trim() ?? '0';
@@ -20,7 +30,7 @@ async function getBadgeCount(page): Promise<number> {
   return Number.isFinite(n) ? n : 0;
 }
 
-test.describe('Inventory – add & remove all items with cart badge validation (soft aggregation)', () => {
+test.describe('Inventory – add & remove all items with cart badge validation', () => {
   for (const username of USERS) {
     test(`Add & remove all items for user: ${username}`, async ({ page }) => {
       const login = new LoginPage(page);
@@ -32,7 +42,6 @@ test.describe('Inventory – add & remove all items with cart badge validation (
       await inventory.expectLoaded();
 
       const issues: { step: string; expected: string; received: string }[] = [];
-      const report: Array<{ step: string; item?: string; success?: boolean; expected?: string; received?: string }> = [];
 
       const cards = page.locator(sel.inventoryItem);
       const totalItems = await cards.count();
@@ -40,45 +49,30 @@ test.describe('Inventory – add & remove all items with cart badge validation (
         issues.push({ step: 'initial load', expected: '>= 1 inventory item', received: '0 items' });
       }
 
-      // --- Alle Items hinzufügen; nach jedem Klick 2 Report-Zeilen erzeugen ---
       let added = 0;
+
+      // --- Add all items ---
       for (let i = 0; i < totalItems; i++) {
         const card = cards.nth(i);
         const name = (await card.locator(sel.inventoryItemName).textContent())?.trim() ?? `#${i + 1}`;
         const addBtn = card.locator(sel.addToCartButton);
 
-        let clickSuccess = false;
         if (await addBtn.isVisible()) {
           try {
             await addBtn.click();
-            clickSuccess = true;
+            added += 1;
           } catch {
-            clickSuccess = false;
+            issues.push({ step: `add "${name}"`, expected: 'click success', received: 'click failed' });
           }
         } else {
-          clickSuccess = false;
+          issues.push({ step: `add "${name}"`, expected: 'button visible', received: 'not visible' });
         }
-
-        // Report-Zeile 1: Button/Artikel Add to cart geklickt = erfolgreich = true/false
-        report.push({
-          step: 'Add to cart clicked',
-          item: name,
-          success: clickSuccess,
-        });
-
-        // Nur wenn der Klick als "erfolgreich" galt, Badge erhöhen
-        if (clickSuccess) added += 1;
 
         const badgeVal = await getBadgeCount(page);
         const expectedBadge = added;
 
-        // Report-Zeile 2: 'cart badge == N' expected/received
-        report.push({
-          step: `cart badge == ${expectedBadge}`,
-          item: name,
-          expected: String(expectedBadge),
-          received: String(badgeVal),
-        });
+        // Log reduced output for each click
+        console.table([{ 'cart badge': '', expected: expectedBadge, received: badgeVal }]);
 
         if (badgeVal !== expectedBadge) {
           issues.push({
@@ -87,28 +81,17 @@ test.describe('Inventory – add & remove all items with cart badge validation (
             received: `cart badge == ${badgeVal}`,
           });
         }
-
-        // Wenn der Klick nicht erfolgreich war, gleich als Issue protokollieren
-        if (!clickSuccess) {
-          issues.push({
-            step: `add "${name}"`,
-            expected: 'add button clickable',
-            received: 'click failed or button not visible',
-          });
-        }
       }
 
-      // Endstand nach Hinzufügen prüfen (optional, hier ohne Extra-Reportzeile)
       const badgeAfterAdds = await getBadgeCount(page);
       if (badgeAfterAdds !== added || added !== totalItems) {
         issues.push({
           step: 'after all adds',
-          expected: `badge == ${totalItems} & added == ${totalItems}`,
-          received: `badge == ${badgeAfterAdds} & added == ${added}`,
+          expected: `badge == ${totalItems}`,
+          received: `badge == ${badgeAfterAdds}`,
         });
       }
 
-      // --- 'post-add state' beibehalten: Anzahl sichtbarer Remove-Buttons prüfen ---
       const removeButtonsVisible = await page.locator(`${sel.inventoryItem} ${sel.removeButton}`).count();
       if (removeButtonsVisible < totalItems) {
         issues.push({
@@ -118,8 +101,9 @@ test.describe('Inventory – add & remove all items with cart badge validation (
         });
       }
 
-      // --- Alle Items wieder entfernen; Badge nach jedem Klick prüfen ---
       let remaining = added;
+
+      // --- Remove all items ---
       for (let i = 0; i < totalItems; i++) {
         const card = cards.nth(i);
         const name = (await card.locator(sel.inventoryItemName).textContent())?.trim() ?? `#${i + 1}`;
@@ -138,6 +122,10 @@ test.describe('Inventory – add & remove all items with cart badge validation (
         }
 
         const badge = await getBadgeCount(page);
+
+        // Log reduced output for each click
+        console.table([{ 'cart badge': '', expected: remaining, received: badge }]);
+
         if (badge !== remaining) {
           issues.push({
             step: `after remove "${name}"`,
@@ -147,7 +135,6 @@ test.describe('Inventory – add & remove all items with cart badge validation (
         }
       }
 
-      // --- 'after all removes' beibehalten: Badge sollte weg oder 0 sein ---
       const finalBadgeCount = await getBadgeCount(page);
       const badgeNodeCount = await page.locator('.shopping_cart_badge').count();
       const badgeVisible = badgeNodeCount > 0 && (await page.locator('.shopping_cart_badge').isVisible());
@@ -159,11 +146,7 @@ test.describe('Inventory – add & remove all items with cart badge validation (
         });
       }
 
-      // --- Report ausgeben (zeigt die beiden geforderten Zeilen pro Button) ---
-      // eslint-disable-next-line no-console
-      console.table(report);
-
-      // --- Harte Assertion am Ende mit vollständiger Zusammenfassung ---
+      // Hard assertion at the end
       expect(
         issues,
         issues.map(i => `[${i.step}] expected ${i.expected}, got ${i.received}`).join('\n')
